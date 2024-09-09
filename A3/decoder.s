@@ -1,6 +1,6 @@
 .text
 
-.include "helloWorld.s"
+.include "final.s"
 
 .global main
 
@@ -30,41 +30,32 @@ decode:
     movq    %rdi, -16(%rbp) # address of start
     
     startLoop:
-        movq    -16(%rbp), %rdi 
-        addq    -8(%rbp), %rdi
+        movq    -16(%rbp), %rdi # set the address of the current quad as the addres of the first quad
+        addq    -8(%rbp), %rdi  # add the offset computed at the end of the last lopp iteration
 
-        call getCount
-        pushq   %rax
-        call getChar
-        pushq   %rax
+        call getCount           # the function to get how many times a letter repeats
+        pushq   %rax            # push the value on the stack
+        pushq   $0
+        call getChar            # the function to get the ascii code of the current character
+        popq    %r8
+        pushq   %rax            
 
-        popq    %rdi
+        popq    %rdi            # load the two values in rdi and rsi to invoke the printChars method
         popq    %rsi
 
         call printChars
         
-        movq    -16(%rbp), %rdi 
-        addq    -8(%rbp), %rdi
-        call getNextLine
-        mul     $8
-        movq    %rax, -8(%rbp)
+        movq    -16(%rbp), %rdi     # recompute the address of the current quad
+        addq    -8(%rbp), %rdi      
+        call getNextLine            # call the method that parses the line value of the next quad from the current quad
+        shlq    $3, %rax            # multiply the new line index by 8 to get the actual memory offset
+        movq    %rax, -8(%rbp)      # update the memory offset
 
-        cmp     $0, -8(%rbp)
-        je final
+        cmpq     $0, -8(%rbp)       # check if the new line is line 0
+        je final                    # if so, exit the loop
         jmp startLoop
 
-        #pushq      
-    
-    #addq $0, %rdi
-
-    #call getChar
-    #movq %rax, %rsi
-
-    #movq    $test, %rdi
-    #movq    $0, %rax
-    #call printf
     final:
-	# epilogue
 	movq	%rbp, %rsp		# clear local variables from stack
 	popq	%rbp			# restore base pointer location 
 	ret
@@ -74,10 +65,10 @@ getCount:
 	pushq	%rbp 			# push the base pointer (and align the stack)
 	movq	%rsp, %rbp		# copy stack pointer value to base pointer
 
-    movq    (%rdi), %rax
-    shlq    $48, %rax
+    movq    (%rdi), %rax    # get the value from the current memory address to %rax
+    shlq    $48, %rax       # discard the 48 leftmost bits
     shrq    $48, %rax
-    shrq    $8, %rax
+    shrq    $8, %rax        # keep only the 7th byte
 
     # epilogue
 	movq	%rbp, %rsp		# clear local variables from stack
@@ -89,8 +80,8 @@ getChar:
 	pushq	%rbp 			# push the base pointer (and align the stack)
 	movq	%rsp, %rbp		# copy stack pointer value to base pointer
 
-    movq    (%rdi), %rax
-    shlq    $56, %rax
+    movq    (%rdi), %rax    # get the memory address to rax
+    shlq    $56, %rax       # discard the 56 leftmost bits
     shrq    $56, %rax
 
     # epilogue
@@ -103,10 +94,10 @@ getNextLine:
 	pushq	%rbp 			# push the base pointer (and align the stack)
 	movq	%rsp, %rbp		# copy stack pointer value to base pointer
 
-    movq    (%rdi), %rax
-    shlq    $16, %rax
-    shrq    $16, %rax
-    shrq    $16, %rax
+    movq    (%rdi), %rax    # get the memory address to rax
+    shlq    $16, %rax       # discard the 16 leftmost bits
+    shrq    $16, %rax   
+    shrq    $16, %rax       # discrad the 16 rightmost bits
 
     # epilogue
 	movq	%rbp, %rsp		# clear local variables from stack
@@ -119,21 +110,21 @@ printChars:
 	pushq	%rbp 			# push the base pointer (and align the stack)
 	movq	%rsp, %rbp		# copy stack pointer value to base pointer
 
-    subq    $8, %rsp
-    pushq   %rsi
-    movq    %rdi, %rbx
+    subq    $8, %rsp        # subtract 8 from rsp 
+    pushq   %rsi            
+    movq    %rdi, %rbx      # save the ascii code of the char in rbx
 
     printLoop:
-        movq    $0, %rax
-        movq    %rbx, %rsi
-        movq    $charT, %rdi
+        movq    $0, %rax    
+        movq    %rbx, %rsi  # move the ascii code to rsi
+        movq    $charT, %rdi 
         call printf
 
-        popq    %rsi
+        popq    %rsi # decrease nr of repetitions
         decq    %rsi
         pushq   %rsi
 
-        cmpq    $0, %rsi
+        cmpq    $0, %rsi  
         je  end
         jmp printLoop
 
