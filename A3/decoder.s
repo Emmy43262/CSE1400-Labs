@@ -36,6 +36,10 @@ decode:
         call getCount           # the function to get how many times a letter repeats
         pushq   %rax            # push the value on the stack
         pushq   $0
+        
+        movq    -16(%rbp), %rdi # set the address of the current quad as the addres of the first quad
+        addq    -8(%rbp), %rdi  # add the offset computed at the end of the last lopp iteration
+        
         call getChar            # the function to get the ascii code of the current character
         popq    %r8
         pushq   %rax            
@@ -110,8 +114,11 @@ printChars:
 	pushq	%rbp 			# push the base pointer (and align the stack)
 	movq	%rsp, %rbp		# copy stack pointer value to base pointer
 
+    pushq   %rbx
+    pushq   %rbx        
+
     subq    $8, %rsp        # subtract 8 from rsp 
-    pushq   %rsi            
+    pushq   %rsi    
     movq    %rdi, %rbx      # save the ascii code of the char in rbx
 
     printLoop:
@@ -129,6 +136,9 @@ printChars:
         jmp printLoop
 
     end:
+
+    movq -8(%rbp), %rbx
+
     # epilogue
 	movq	%rbp, %rsp		# clear local variables from stack
 	popq	%rbp			# restore base pointer location 
