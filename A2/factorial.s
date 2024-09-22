@@ -80,7 +80,7 @@ pow:
 factorial:
     pushq   %rbp
     movq    %rsp, %rbp
-
+    
     cmp     $0, %rdi            # check if the basecase is valid
     jne     normal              # if we're not at the base case, jump
 
@@ -93,13 +93,10 @@ factorial:
     normal:
         subq    $8, %rsp   
         pushq   %rdi
-        
         dec     %rdi                # call factorial(n-1)
         call    factorial
-        
         popq    %r8
         addq    $8, %rsp
-        
         mul     %r8               # multiply factorial(n-1) with n
 
         movq    %rbp, %rsp          # epilogue

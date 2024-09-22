@@ -17,7 +17,7 @@ formstr: .asciz "%ld"
 # Returns: 													 *
 # 	'base' raised to the power of 'exp' 					 *
 # ************************************************************
-pow:
+power:
 	pushq %rbp				
 	movq %rsp, %rbp
 
@@ -38,6 +38,43 @@ pow:
 	popq %rbp
 	ret
 
+# The same as power from above but uses a faster algorithm
+power2:
+	pushq %rbp
+	movq %rsp, %rbp
+
+	movq $1, %rcx			# the current bit
+	movq %rdi, %r11			# the current power of %rdi
+	movq $1, %r8			# the answer
+
+	loop_2:
+		cmpq $0, %rsi
+		jle end_2
+
+		movq %rcx, %rdx 	# copy the current bit to check if it's in exponent
+		andq %rsi, %rdx		# %rdx is 0 if the bit in %rcx is not in the exponent
+		
+		cmpq $0, %rdx		
+ 		je afterAddToAnswer			# if it is equal to 0, jump to after the addition
+		
+		movq %r8, %rax		# move the answer in rax
+		mul %r11			# multiply rax with the current bit
+		movq %rax, %r8		# move back the new answer
+		sub %rcx, %rsi		# remove the current bit from the exponent
+
+		afterAddToAnswer:
+		movq %r11, %rax		# multiply the current power by itself
+		mul %r11			
+		movq %rax, %r11
+
+		shl $1, %rcx
+
+		jmp loop_2
+	end_2:
+	movq %r8, %rax
+	movq %rbp, %rsp
+	popq %rbp
+	ret
 
 main:
 	pushq	%rbp 			# push the base pointer (and align the stack)
@@ -57,7 +94,7 @@ main:
 
 	movq -32(%rbp), %rsi	# get exp from stack
 	movq -16(%rbp), %rdi	# get base from stack
-	call pow
+	call power2
 
 	movq %rax, %rsi
 	movq $template, %rdi
