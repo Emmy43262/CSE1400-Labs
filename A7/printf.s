@@ -62,31 +62,31 @@ my_printf:
 
         cmpq    $1, %r13        # find out where the parameter for the current template is located
         jne     check_rdx       
-        pushq   -40(%rbp)
+        pushq   -40(%rbp)       # this is where rsx is saved
         jmp     continue_printing_template
 
         check_rdx:
         cmpq    $2, %r13    
         jne     check_rcx       
-        pushq   -48(%rbp)
+        pushq   -48(%rbp)       # this is where rdx is saved
         jmp     continue_printing_template
         
         check_rcx:
         cmpq    $3, %r13 
         jne     check_r8 
-        pushq   -56(%rbp)     
+        pushq   -56(%rbp)       # this is where rcx is saved
         jmp     continue_printing_template
         
         check_r8:
         cmpq    $4, %r13 
         jne     check_r9       
-        pushq   -64(%rbp)
+        pushq   -64(%rbp)       # this is where r8 is saved
         jmp     continue_printing_template
         
         check_r9:
-        cmpq    $5, %r13 
+        cmpq    $5, %r13        
         jne     check_on_stack       
-        pushq   -72(%rbp)
+        pushq   -72(%rbp)       # this is where r9 is saved
         jmp     continue_printing_template
         
         check_on_stack:
@@ -108,7 +108,7 @@ my_printf:
         pushq   %rsi
         pushq   $0
         call    getStringLength # get lenght into rax
-        popq    %rsi
+        popq    %rsi            # restore registers
         popq    %rsi
         popq    %rcx
 
@@ -120,7 +120,7 @@ my_printf:
         movq    $1, %rdi        # stdout
         pushq   %rcx
         syscall
-        popq    %rcx
+        popq    %rcx            # restore rcx
         popq    %rdx            # restore rdx
         popq    %rax            # restore rax
         jmp     continue_looping_base_string
@@ -131,22 +131,22 @@ my_printf:
         je      print_the_nums
 
         check_signed:
-        cmpb    $100, (%rax)
-        je      print_the_nums
-        pushq   %rsi
+        cmpb    $100, (%rax)    # checek if a signed number should be printed ('d')
+        je      print_the_nums 
+        pushq   %rsi            # save registers 
         pushq   %rdx
         pushq   %rax
         pushq   %rdi
-        movq    $procent, %rsi
+        movq    $procent, %rsi  # print a '%'
         movq    $1, %rdx        # print the number of digits the number has
         movq    $1, %rax        # sys_write
         movq    $1, %rdi        # stdout  
         syscall
-        popq    %rdi
+        popq    %rdi            # restore registers
         popq    %rax
         popq    %rdx
         popq    %rsi
-        incq    %r12
+        incq    %r12            # print the character after the '%' in case there is no valid template
         decq    %r13
         jmp     default_printing
 
@@ -156,10 +156,10 @@ my_printf:
         movq    %rcx, %rax      # move the number to rax
         pushq   %rdi            # save old rdi
 
-        cmpq    $0, %rax
+        cmpq    $0, %rax        # check if a negative number should be printed
         jge     continue_adding_to_buffer
-        movq    8(%rsp), %rcx
-        cmpb    $117, (%rcx)
+        movq    8(%rsp), %rcx   # load the template into rcx
+        cmpb    $117, (%rcx)    # in case a signed number has to be printed, print a '-'
         je      continue_adding_to_buffer
         pushq   %rax
         movq    $minus, %rsi
@@ -168,18 +168,18 @@ my_printf:
         movq    $1, %rdi        # stdout  
         pushq   %rcx  
         syscall
-        popq    %rcx
+        popq    %rcx            # restore the registers
         popq    %rax
-        movq    $-1, %rdi
-        mulq    %rdi
+        movq    $-1, %rdi   
+        mulq    %rdi            # multiply the number (stored in rax) by -1 to get the positive number to print
 
         continue_adding_to_buffer:
-        movq    $0, %rdi
+        movq    $0, %rdi        
         movq    $0, %rcx
-        movq    $num_buf, %rcx
-        addq    $30, %rcx
+        movq    $num_buf, %rcx  # save the buffer into rcx
+        addq    $30, %rcx       # start putting digits into the buffer from the end
         
-        movb    $0, (%rcx)
+        movb    $0, (%rcx)      
 
         cmpq    $0, %rax        # check if 0 should be printed
         jne     get_unsigned_digits_on_stack
@@ -188,43 +188,43 @@ my_printf:
         jmp     print_unsingned_int
 
 
-        get_unsigned_digits_on_stack:   # move the digits of the number on the stack
+        get_unsigned_digits_on_stack:       # move the digits of the number on the stack
             cmpq    $0, %rax                # check if all the digits were moved
-            je      print_unsingned_int
-            pushq   %rcx
-            movq    $10, %rcx
-            movq    $0, %rdx
+            je      print_unsingned_int     # if so, print the number
+            pushq   %rcx                    # save rcx
+            movq    $10, %rcx               # move the divisor(10) into rcx
+            movq    $0, %rdx                # set rdx to 0 to save the reminder of the division
             divq    %rcx                    # divide rax by 10
-            popq    %rcx
+            popq    %rcx                    # restore rcx
             addq    $48, %rdx               # change it to char
-            decq    %rcx
-            movb    %dl, (%rcx)
+            decq    %rcx                    # decrease the address in the buffer
+            movb    %dl, (%rcx)             # move the current digit in the buffer
             incq    %rdi                    # increase the number of digits
-            jmp     get_unsigned_digits_on_stack
+            jmp     get_unsigned_digits_on_stack    # repeat for the next digit
 
         print_unsingned_int:
-            pushq   %rdi
-            movq    %rcx, %rsi
-            movq    %rdi, %rdx        # print the number of digits the number has
+            pushq   %rdi            # save rdi
+            movq    %rcx, %rsi      # get the address of the most significant digit from the buffer into rsi
+            movq    %rdi, %rdx      # print the number of digits the number has
             movq    $1, %rax        # sys_write
             movq    $1, %rdi        # stdout   
-            pushq   %rcx 
+            pushq   %rcx            # save rcx
             syscall
-            popq    %rcx
-            popq    %rdi
+            popq    %rcx            # restore rcx
+            popq    %rdi            # restore rdi
 
         after_remove_u_digits:
-            popq    %rdi
-            popq    %rax
+            popq    %rdi            # restore rdi
+            popq    %rax            # restore rax
 
         jmp     continue_looping_base_string
 
         continue_looping_base_string:
-        incq    %r12
-        jmp     loop_over_string
+        incq    %r12                # process the next character
+        jmp     loop_over_string    # continue the loop
 
         procent_print_case:
-            incq    %r12
+            incq    %r12            # in case a "%%" apears, to solve edgecases such as "%%d"
 
         default_printing:
             movq    %rax, %rsi  # the current character 
@@ -239,7 +239,7 @@ my_printf:
             jmp loop_over_string
 
     end_loop_over_string:
-    movq    -24(%rbp), %r12
+    movq    -24(%rbp), %r12     # restore calle saved registers
     movq    -32(%rbp), %r13
 
     movq 	%rbp, %rsp
